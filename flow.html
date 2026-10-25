@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Synvoraith Flow: visual workflow builder</title>
+<style>
+:root{--bg:#0a1426;--panel:#0f1f3a;--text:#f4f8ff;--muted:#a9b8cc;--line:rgba(166,194,226,.2);--inp:#071329;--dot:rgba(166,194,226,.16);--cT:#20e3c2;--cD:#9b8cff;--cL:#20b8ff;--cA:#ffb454;--bad:#ff7a7a;--ok:#4ade80;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eef3fa;--panel:#fff;--text:#0b1a30;--muted:#51647d;--line:rgba(11,26,48,.18);--inp:#f3f7fc;--dot:rgba(11,26,48,.14);--cT:#0a9a82;--cD:#6a55e0;--cL:#0a7fc2;--cA:#b86b00;--bad:#c23030;--ok:#1a8a42}}
+:root[data-theme="light"]{--bg:#eef3fa;--panel:#fff;--text:#0b1a30;--muted:#51647d;--line:rgba(11,26,48,.18);--inp:#f3f7fc;--dot:rgba(11,26,48,.14);--cT:#0a9a82;--cD:#6a55e0;--cL:#0a7fc2;--cA:#b86b00;--bad:#c23030;--ok:#1a8a42}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.45}
+.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{font-weight:800;letter-spacing:-.03em;font-size:1.05rem}.brand b{color:var(--cT)}
+.top input{flex:1;min-width:140px;max-width:300px}
+button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:7px 12px;font-weight:650}
+button.go{background:var(--cT);color:#06142b;border-color:transparent}
+button:focus-visible,input:focus-visible{outline:2px solid var(--cL);outline-offset:2px}
+input{font:inherit;color:var(--text);background:var(--inp);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+.app{display:grid;grid-template-columns:190px 1fr 290px;min-height:calc(100vh - 56px)}
+.pal{padding:12px;border-right:1px solid var(--line);background:var(--panel)}
+.pal h3,.side h3{margin:0 0 8px;font-size:.78rem;color:var(--muted);font-weight:650}
+.pal button{display:flex;gap:8px;align-items:center;width:100%;margin-bottom:6px;text-align:left;font-weight:550;font-size:.86rem}
+.g{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;font-size:.72rem;font-weight:800;color:#06142b;flex:none}
+.cat-t{background:var(--cT)}.cat-d{background:var(--cD)}.cat-l{background:var(--cL)}.cat-a{background:var(--cA)}
+.cv{overflow:auto;position:relative;height:calc(100vh - 56px);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.2px);background-size:22px 22px}
+.board{position:relative;width:1900px;height:420px}
+.board svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.board path.e{fill:none;stroke:var(--muted);stroke-width:2}
+.board path.e.sel{stroke:var(--cT);stroke-width:3}
+.board path.hit{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}
+.board path.tmp{fill:none;stroke:var(--cT);stroke-width:2;stroke-dasharray:5 4}
+.node{position:absolute;width:160px;height:58px;background:var(--panel);border:1px solid var(--line);border-radius:12px;display:flex;gap:8px;align-items:center;padding:0 10px;cursor:grab;touch-action:none;user-select:none;z-index:1}
+.node.sel{border-color:var(--cT);box-shadow:0 0 0 2px color-mix(in srgb,var(--cT) 30%,transparent)}
+.node.run{border-color:var(--cA)}.node.done{border-color:var(--ok)}
+.nt{min-width:0}.nt b{display:block;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nt small{display:block;color:var(--muted);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:104px}
+.in,.out{position:absolute;top:22px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--muted)}
+.in{left:-7px}.out{right:-7px;cursor:crosshair;touch-action:none}.out:hover{border-color:var(--cT)}
+.chk{position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;background:var(--ok);color:#06142b;font-size:.7rem;display:none;place-items:center;font-weight:800}
+.node.done .chk{display:grid}
+.side{padding:12px;border-left:1px solid var(--line);background:var(--panel);overflow:auto;max-height:calc(100vh - 56px)}
+.side label{display:block;font-size:.76rem;color:var(--muted);margin:8px 0 3px}
+.log{margin-top:12px;font-size:.8rem;color:var(--muted)}.log div{padding:3px 0;border-top:1px solid var(--line)}.log .ok{color:var(--ok)}
+textarea{width:100%;height:120px;font:.72rem ui-monospace,Menlo,monospace;background:var(--inp);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px}
+.hint{color:var(--muted);font-size:.84rem}
+@media(max-width:860px){.app{grid-template-columns:1fr;min-height:0}.pal{border-right:0;border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto;align-items:center}.pal h3{display:none}.pal button{width:auto;white-space:nowrap;margin:0}.cv{height:360px}.side{border-left:0;border-top:1px solid var(--line);max-height:none}}
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">synvoraith<b>.</b> flow</span><input id="wf" aria-label="Workflow name"><button class="go" id="run" type="button">Run workflow</button><button id="exp" type="button">Export JSON</button><button id="rst" type="button">Reset</button></div>
+<div class="app">
+<div class="pal" id="pal"><h3>Add a node</h3></div>
+<div class="cv" id="cv"><div class="board" id="board"><svg id="svg"></svg></div></div>
+<div class="side"><div id="panel"></div><div class="log" id="log"></div><div id="exw"></div></div>
+</div>
+<script>
+const K="synv_flow_v1";
+const T={
+trigger:{l:"Schedule trigger",c:"t",g:"T",d:"Starts the run on a schedule",f:[["cron","Schedule","Weekdays at 9:00 am"]],run:"Triggered: weekday 9:00 am",n8n:"scheduleTrigger"},
+sheets:{l:"Google Sheets",c:"d",g:"S",d:"Reads the lead rows",f:[["sheet","Sheet name","Leads"],["rows","Rows to read","All (100)"]],run:"Read 100 leads from the sheet",n8n:"googleSheets"},
+filter:{l:"Filter",c:"l",g:"F",d:"Drops invalid or stopped leads",f:[["rule","Keep leads where","status is Active, email valid"]],run:"96 leads kept, 4 skipped (invalid email)",n8n:"filter"},
+split:{l:"Split in batches",c:"l",g:"B",d:"Releases leads in daily batches",f:[["size","Batch size","30"],["per","Release","One batch per weekday"]],run:"Batch 1 of 4 released: 30 leads",n8n:"splitInBatches"},
+wait:{l:"Wait",c:"l",g:"W",d:"Spaces out the sends",f:[["gap","Minutes between sends","2 to 5, random"],["win","Send windows","9-11 am and 2-4 pm"]],run:"Waiting 2 to 5 minutes between sends",n8n:"wait"},
+send:{l:"Send email",c:"a",g:"M",d:"Sends the sequence email",f:[["from","Send from","Gmail or Zoho SMTP"],["subject","Subject","quick question about {{pain}}"]],run:"30 emails sent inside the send windows (simulated)",n8n:"emailSend"},
+replies:{l:"Check replies",c:"l",g:"R",d:"Detects replies and bounces",f:[["rule","Stop sequence on","Reply, bounce, unsubscribe"]],run:"2 replies found, their sequences stopped",n8n:"emailReadImap"},
+update:{l:"Update sheet",c:"d",g:"U",d:"Writes status back to the sheet",f:[["cols","Columns to write","status, last_sent, step"]],run:"32 rows updated",n8n:"googleSheets"},
+report:{l:"Weekly report",c:"d",g:"P",d:"Emails the summary",f:[["when","Send","Fridays 5:00 pm"],["to","Recipients","you@company.com"]],run:"Report scheduled for Friday 5:00 pm",n8n:"emailSend"}};
+const ORDER=["trigger","sheets","filter","split","wait","send","replies","update","report"];
+function seed(){return{name:"Outreach: 100 leads, 4 emails",nodes:ORDER.map((t,i)=>({id:"n"+(i+1),t,x:30+i*200,y:i%2?190:60,name:T[t].l,p:Object.fromEntries(T[t].f.map(f=>[f[0],f[2]]))})),edges:ORDER.slice(1).map((t,i)=>({a:"n"+(i+1),b:"n"+(i+2)}))}}
+let S;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!S||!S.nodes)S=seed();
+let sel=null,selE=null,uid=Math.max(9,...S.nodes.map(n=>+n.id.slice(1)));
+const $=id=>document.getElementById(id),board=$("board"),svg=$("svg");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+const sub=n=>Object.values(n.p)[0]||T[n.t].d;
+function nodeEl(n){return $(n.id)}
+function render(){board.querySelectorAll(".node").forEach(e=>e.remove());
+S.nodes.forEach(n=>{const d=document.createElement("div");d.className="node"+(sel===n.id?" sel":"");d.id=n.id;d.style.left=n.x+"px";d.style.top=n.y+"px";
+d.innerHTML=`<span class="in"></span><span class="out" data-out="${n.id}"></span><span class="chk">✓</span><span class="g cat-${T[n.t].c}">${T[n.t].g}</span><span class="nt"><b>${esc(n.name)}</b><small>${esc(sub(n))}</small></span>`;board.appendChild(d)});
+edges();panel()}
+function edges(){const get=id=>S.nodes.find(n=>n.id===id);
+svg.innerHTML=S.edges.map((e,i)=>{const a=get(e.a),b=get(e.b);if(!a||!b)return"";const x1=a.x+160,y1=a.y+29,x2=b.x,y2=b.y+29,d=`M${x1} ${y1}C${x1+60} ${y1},${x2-60} ${y2},${x2} ${y2}`;return`<path class="e${selE===i?" sel":""}" d="${d}"/><path class="hit" data-e="${i}" d="${d}"/>`}).join("")+'<path class="tmp" id="tmp" d=""/>'}
+function panel(){const p=$("panel");
+if(selE!==null){p.innerHTML='<h3>Connection</h3><p class="hint">Selected connection.</p><button id="delE" type="button">Delete connection</button>';$("delE").onclick=()=>{S.edges.splice(selE,1);selE=null;save();render()};return}
+const n=S.nodes.find(x=>x.id===sel);
+if(!n){p.innerHTML='<h3>How it works</h3><p class="hint">Drag nodes to move them. Drag from the round dot on a node’s right edge onto another node to connect them. Tap a node to edit it, then press Run workflow to watch the flow execute (simulated, nothing is sent).</p>';return}
+p.innerHTML=`<h3>${esc(T[n.t].l)}</h3><p class="hint">${esc(T[n.t].d)}</p><label>Node name</label><input id="nm" value="${esc(n.name)}">`+T[n.t].f.map(f=>`<label>${esc(f[1])}</label><input data-k="${f[0]}" value="${esc(n.p[f[0]])}">`).join("")+'<p></p><button id="delN" type="button">Delete node</button>';
+$("nm").oninput=e=>{n.name=e.target.value;nodeEl(n).querySelector("b").textContent=n.name;save()};
+p.querySelectorAll("[data-k]").forEach(i=>i.oninput=e=>{n.p[i.dataset.k]=e.target.value;nodeEl(n).querySelector("small").textContent=sub(n);save()});
+$("delN").onclick=()=>delNode(n.id)}
+function delNode(id){S.nodes=S.nodes.filter(n=>n.id!==id);S.edges=S.edges.filter(e=>e.a!==id&&e.b!==id);sel=null;save();render()}
+function pt(e){const r=board.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+board.addEventListener("pointerdown",e=>{
+const out=e.target.closest("[data-out]"),nd=e.target.closest(".node"),hit=e.target.closest("[data-e]");
+if(out){e.preventDefault();const a=S.nodes.find(n=>n.id===out.dataset.out);const mv=ev=>{const[x,y]=pt(ev);$("tmp").setAttribute("d",`M${a.x+160} ${a.y+29}C${a.x+220} ${a.y+29},${x-60} ${y},${x} ${y}`)};
+const up=ev=>{window.removeEventListener("pointermove",mv);window.removeEventListener("pointerup",up);const el=document.elementFromPoint(ev.clientX,ev.clientY),t=el&&el.closest(".node");
+if(t&&t.id!==a.id&&!S.edges.some(x=>x.a===a.id&&x.b===t.id)){S.edges.push({a:a.id,b:t.id});save()}edges()};
+window.addEventListener("pointermove",mv);window.addEventListener("pointerup",up);return}
+if(nd){e.preventDefault();const n=S.nodes.find(x=>x.id===nd.id);selE=null;if(sel!==n.id){sel=n.id;board.querySelectorAll(".node").forEach(x=>x.classList.toggle("sel",x.id===sel));panel();edges()}
+const[px,py]=pt(e),ox=px-n.x,oy=py-n.y;
+const mv=ev=>{const[x,y]=pt(ev);n.x=Math.max(0,Math.min(1740,Math.round(x-ox)));n.y=Math.max(0,Math.min(350,Math.round(y-oy)));nd.style.left=n.x+"px";nd.style.top=n.y+"px";edges()};
+const up=()=>{window.removeEventListener("pointermove",mv);window.removeEventListener("pointerup",up);save()};
+window.addEventListener("pointermove",mv);window.addEventListener("pointerup",up);return}
+if(hit){selE=+hit.dataset.e;sel=null;render();return}
+sel=null;selE=null;render()});
+window.addEventListener("keydown",e=>{if((e.key=="Delete"||e.key=="Backspace")&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){if(sel)delNode(sel);else if(selE!==null){S.edges.splice(selE,1);selE=null;save();render()}}});
+const pal=$("pal");
+ORDER.forEach(t=>{const b=document.createElement("button");b.type="button";b.innerHTML=`<span class="g cat-${T[t].c}">${T[t].g}</span>${T[t].l}`;b.onclick=()=>{const c=$("cv");uid++;const k=S.nodes.length%4;S.nodes.push({id:"n"+uid,t,x:Math.round(c.scrollLeft+30+k*30),y:30+k*70,name:T[t].l,p:Object.fromEntries(T[t].f.map(f=>[f[0],f[2]]))});sel="n"+uid;selE=null;save();render()};pal.appendChild(b)});
+$("wf").value=S.name;$("wf").oninput=e=>{S.name=e.target.value;save()};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));let running=false;
+$("run").onclick=async()=>{if(running)return;running=true;const log=$("log");log.innerHTML="<h3 style='margin:0 0 4px;font-size:.78rem'>Run log (simulated)</h3>";
+board.querySelectorAll(".node").forEach(e=>e.classList.remove("run","done"));
+const inc=new Set(S.edges.map(e=>e.b)),seen=new Set();let q=S.nodes.filter(n=>!inc.has(n.id)).map(n=>n.id);
+while(q.length){const id=q.shift();if(seen.has(id))continue;seen.add(id);const n=S.nodes.find(x=>x.id===id),el=nodeEl(n);el.classList.add("run");await sleep(650);el.classList.remove("run");el.classList.add("done");
+log.insertAdjacentHTML("beforeend",`<div><b>${esc(n.name)}:</b> ${esc(T[n.t].run)}</div>`);S.edges.filter(e=>e.a===id).forEach(e=>q.push(e.b))}
+const miss=S.nodes.filter(n=>!seen.has(n.id));if(miss.length)log.insertAdjacentHTML("beforeend",`<div class="bad">Not connected, skipped: ${miss.map(n=>esc(n.name)).join(", ")}</div>`);
+log.insertAdjacentHTML("beforeend",'<div class="ok">Run complete. No emails were sent.</div>');running=false};
+$("exp").onclick=()=>{const conn={};S.edges.forEach(e=>{const a=S.nodes.find(n=>n.id===e.a),b=S.nodes.find(n=>n.id===e.b);if(!a||!b)return;(conn[a.name]=conn[a.name]||{main:[[]]}).main[0].push({node:b.name,type:"main",index:0})});
+const j=JSON.stringify({name:S.name,nodes:S.nodes.map(n=>({id:n.id,name:n.name,type:"n8n-nodes-base."+T[n.t].n8n,position:[n.x,n.y],parameters:n.p})),connections:conn},null,2);
+$("exw").innerHTML='<h3 style="margin:14px 0 0;font-size:.78rem;color:var(--muted)">Workflow JSON</h3><textarea id="ta" readonly></textarea><p class="hint">Simplified n8n-style export. Treat it as a blueprint: node settings usually need to be re-entered in n8n.</p>';$("ta").value=j;
+try{navigator.clipboard.writeText(j)}catch(e){}
+try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([j],{type:"application/json"}));a.download="synvoraith-workflow.json";a.click()}catch(e){}};
+$("rst").onclick=()=>{if(confirm("Reset to the default outreach workflow?")){S=seed();sel=null;selE=null;$("wf").value=S.name;$("log").innerHTML="";$("exw").innerHTML="";save();render()}};
+render();
+</script>
+</body>
+</html>
